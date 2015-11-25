@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+<script type = "text/javascript" src = "jquery-1.8.3.min.js"></script>
+<script type = "text/javascript" src = "jquery.SPServices-2013.01.min.js"></script>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"> 
+<script>
+
+$(document).ready(function(){
+	var pages = [];
+	// within the realm of which url you're searching under
+	var webURL = '';
+	// optional, but can edit later
+	var baseURL = '';
+	
+	// get all pages and push into pages array 
+	$().SPServices({
+		operation: "GetListItems",
+		webURL: webURL,
+		listName: "Pages",
+		async: false,
+		CAMLViewFields: "<ViewFields><FieldRef Name='Title'/></ViewFields>",
+		CAMLQuery: "<Query></Query>",
+		completefunc: function(xData, Status){
+			$(xData.responseXML).SPFilterNode("z:row").each(function(){
+				page = $(this).attr("ows_FileRef").split(";#")[1];
+				if(page.indexOf("aspx") > -1){
+					pages.push(page);
+				}
+			});
+		}	
+	});
+	
+	var subPages = [];
+	// use substring for valid links
+	var containsSub = '';
+	var tempString = '';
+	
+	// iterate through the pages array in reverse
+	for(var i = pages.length - 1; i >= 0; i--){
+		// grab all <a> within response text
+		var getLinks = $.ajax({
+			url: baseURL + pages[i], 
+			async: false,
+			success: function(responseData){
+				var $response = $(responseData);
+				var $links = $response.find('a');
+				// push each valid link into subPages array
+				$links.each(function(index, $link){
+					if(this.href.indexOf(containsSub) > -1){
+						subPages.push(this.href);
+					}
+				});
+			}
+		})
+		
+		// print bold for current main page
+		tempString += "<strong><a href='"+ baseURL + pages[i] + "'>" + pages[i] + "</a></strong>" + " <br>";
+			
+		for(var j = 0; j < subPages.length - 1; j++){
+			tempString += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+			tempString += "<a href='" + subPages[j] + "'>" + subPages[j] + "</a>" + " <br>";
+		}
+		
+		// empty subPages and move onto next page
+		subPages = [];
+		pages.splice(i, 1);
+	}
+	
+	$('#siteMap').html(tempString);
+});
+</script>
+</head>
+<body>
+	<div id="siteMap">
+	</div>
+</body>
+</html>
+
